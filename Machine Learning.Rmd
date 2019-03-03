@@ -1,0 +1,65 @@
+---
+title: "Building a Model to identify the classe of the exercise performed"
+author: "Saurabh Pai"
+date: "3 March 2019"
+output: html_document
+---
+
+##Executive Summary
+The dataset is based on exercises performed by 6 individuals in 5 different ways.
+Data from accelerometers on the belt, forearm, arm and dumbell was collected.
+Objective is to build a model to identify the class on the basis of the data collected.
+
+##Method:
+Read the data from the csv file and study the summary
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(caret)
+data <- read.csv("pml-training.csv")
+dim(data)
+summary(data)
+```
+
+The dataset contains 160 variables and 19622 observations.
+
+##Data Cleaning
+As seen from the summary, there are 3 types of variables that need to be excluded from the model:
+1. Columns containing mostly NA
+2. Columns containing mostly blanks.
+3. The first seven columns, deal with the person performing the exercise and time stamps. They do not carry data related to the performance of the exercise. Hence, we exclude them from the model.
+
+```{r}
+na_count <- sapply(data,function(y) sum(length(which(is.na(y)))))
+na_counthigh <- which(na_count>200)
+na_counthigh <- as.vector(na_counthigh)
+test <- data[,-na_counthigh]
+blank_count <- sapply(test,function(y) sum(length(which(y==""))))
+highblankcount <- as.vector(which(blank_count>200))
+final <- test[,-highblankcount]
+dim(final)
+finaldata <- final[,8:60]
+summary(finaldata)
+```
+
+
+Once we have created the final data set to create the model, we set about with actual creation of the model. We use the train control function for cross validation with method a 'cv' and use 10 folds.
+Then, using boosting method in the caret package, we create a model to predict the classe using the variables.
+
+
+
+```{r}
+set.seed(33254)
+control <- trainControl(method="cv",number=10)
+modfit <- train(classe ~.,method="gbm",data=finaldata,trControl = control,verbose = FALSE)
+prediction <- predict(modfit,finaldata)
+```
+
+Once the prediction is finalized, we now check the results of the prediction and compare it with the actual classe. As per the model, the accuracy of the classification is close to 97%
+
+```{r}
+table(prediction,finaldata$classe)
+accuracy <- length(which(prediction == finaldata$classe))/length(finaldata$classe)
+accuracy
+```
